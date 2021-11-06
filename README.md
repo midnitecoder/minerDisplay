@@ -5,7 +5,7 @@ In order to use this script you need to install TaperMonkey (https://www.tamperm
 
 Presently supported miners:
 gminer
-lolMiner
+lolMiner - haven't done work to get power working here yet...
 nbminer
 
 Credit for the starting point goes to DejanRibnikar for which I found the script at https://greasyfork.org/en/scripts/422711-gminer-hashrate-chart
