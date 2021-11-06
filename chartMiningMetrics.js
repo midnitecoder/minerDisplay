@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         checkMiningStats
 // @namespace    http://tampermonkey.net/
-// @version      1.2
-// @description  Add a chart to your crypto mining stats
+// @version      1.3
+// @description  Add a chart to your GMiner API
 // @author       midnitecoder
 // @match        http://midniteminer:22333/
 // @match        http://midniteminer:42010/
@@ -52,20 +52,16 @@ var sharesPerMinChart = null;
 var powerPerMinChart = null;
 var urlToLoad = 'goFish';
 var currentMiner = null;
+var refreshRateMinutes = 0.5;
+var maxMinutesToChart = 120;
 
 window.onload = async function() {
     await setUrlToLoad();
     logToConsole('onload', 'urlToLoad=' + urlToLoad + ' currentMiner=' + currentMiner);
-//    if( currentMiner === 'lolMiner' || currentMiner === 'nbminer' ){
-        $('body').prepend('<div style = "text-align:center;"><canvas id="sharesPerMinChart" width="1000" height="250"></canvas></div>');
-        $('body').prepend('<div style = "text-align:center;"><canvas id="powerPerMinChart" width="1000" height="250"></canvas></div>');
-        $('body').prepend('<div style = "text-align:center;"><canvas id="hashRateChart" width="1000" height="250"></canvas></div>');
+    $('body').prepend('<div style = "text-align:center;"><canvas id="sharesPerMinChart" width="1000" height="250"></canvas></div>');
+    $('body').prepend('<div style = "text-align:center;"><canvas id="powerPerMinChart" width="1000" height="250"></canvas></div>');
+    $('body').prepend('<div style = "text-align:center;"><canvas id="hashRateChart" width="1000" height="250"></canvas></div>');
 
-//    } else {
-//        $('body').append('<div style = "text-align:center;"><canvas id="hashRateChart" width="1000" height="250"></canvas></div>');
-//        $('body').append('<div style = "text-align:center;"><canvas id="powerPerMinChart" width="1000" height="250"></canvas></div>');
-//        $('body').append('<div style = "text-align:center;"><canvas id="sharesPerMinChart" width="1000" height="250"></canvas></div>');
-//    }
     var ctx = document.getElementById('hashRateChart').getContext('2d');
     var ctxShares = document.getElementById('sharesPerMinChart').getContext('2d');
     var power = document.getElementById('powerPerMinChart').getContext('2d');
@@ -179,99 +175,21 @@ var hashRateConfig = {
                 //pe: 'logarithmic',
                 scaleLabel: {
                     display: true,
-                    labelString: 'Hash Rate (MH/s)'
-
+                    labelString: 'Hash Rate MH/s'
                 }
             }]
         }
     }
 };
 
-var sharesPerMinConfig = {
-    type: 'line',
-    data: {
-        labels: [],
-        datasets: []
-    },
-    options: {
-        responsive: true,
-        showLine: true,
-        title: {
-            display: true,
-            text: 'Shares per minute'
-        },
-        scales: {
-            xAxes: [{
-                ticks: {
-                    beginAtZero: false,
-                    precision: "2"
-                },
-                display: true,
-                scaleLabel: {
-                    display: true,
-                    labelString: 'Time'
-                }
-            }],
-            yAxes: [{
-                ticks: {
-                    beginAtZero: false
-                },
-                display: true,
-                suggestedMin: 0.3,
-                suggestedMax: 1.5,
-                beginAtZero: false,
-                //type: 'logarithmic',
-                scaleLabel: {
-                    display: true,
-                    labelString: 'Shares per minute'
 
-                }
-            }]
-        }
-    }
-};
+var sharesPerMinConfig  = JSON.parse(JSON.stringify(hashRateConfig));
+sharesPerMinConfig.options.title.text = 'Shares per Minute';
+sharesPerMinConfig.options.scales.yAxes[0].scaleLabel.labelString = 'Shares per Minute';
 
-var powerPerMinConfig = {
-    type: 'line',
-    data: {
-        labels: [],
-        datasets: []
-    },
-    options: {
-        responsive: true,
-        showLine: true,
-        title: {
-            display: true,
-            text: 'Power'
-        },
-        scales: {
-            xAxes: [{
-                ticks: {
-                    beginAtZero: false,
-                    precision: "2"
-                },
-                display: true,
-                scaleLabel: {
-                    display: true,
-                    labelString: 'Time'
-                }
-            }],
-            yAxes: [{
-                ticks: {
-                    beginAtZero: false
-                },
-                display: true,
-                suggestedMin: 50,
-                //type: 'logarithmic',
-                scaleLabel: {
-                    display: true,
-                    labelString: 'Power'
-
-                }
-            }]
-        }
-    }
-};
+var powerPerMinConfig = JSON.parse(JSON.stringify(hashRateConfig));
+powerPerMinConfig.options.title.text = 'Power (watts)';
+powerPerMinConfig.options.scales.yAxes[0].scaleLabel.labelString = 'Power (watts)';
 
 function roundUp(num, precision) {
     precision = Math.pow(10, precision)
@@ -308,7 +226,7 @@ function makeHashrateDatasets() {
                     fill: false
                 }
                 var powerDataset = {
-                    lable: device.name,
+                    label: device.name,
                     backgroundColor: newColor,
                     borderColor: newColor,
                     data: [],
@@ -321,38 +239,40 @@ function makeHashrateDatasets() {
                 sharesPerMinChart.update();
                 powerPerMinChart.update();
             });
-            var newDataset = {
+            var poolDataset = {
                 label: 'PoolHash',
                 backgroundColor: 'rgb(75, 192, 192)',
                 borderColor: 'rgb(75, 192, 192)',
                 data: [],
                 fill: false
             };
-            hashRateConfig.data.datasets.push(newDataset);
+            hashRateConfig.data.datasets.push(poolDataset);
             hashRateChart.update();
         }
     });
 }
 
 function getNewTime() {
-    var time = new Date();
-    var hours = time.getHours();
-    var minutes = time.getMinutes();
-    var roundedHours = "";
-    var roundedMinutes = "";
-
-    if (hours < 10) {
-        roundedHours = "0" + hours;
-    } else roundedHours = hours;
-    if (minutes < 10) {
-        roundedMinutes = "0" + minutes;
-    } else roundedMinutes = minutes;
-
-    var currentTime = roundedHours + ":" + roundedMinutes;
+//    var time = new Date();
+//    var hours = time.getHours();
+//    var minutes = time.getMinutes();
+//    var roundedHours = "";
+//    var roundedMinutes = "";
+//
+//    if (hours < 10) {
+//        roundedHours = "0" + hours;
+//    } else roundedHours = hours;
+//    if (minutes < 10) {
+//        roundedMinutes = "0" + minutes;
+//    } else roundedMinutes = minutes;
+//
+//    var currentTime = roundedHours + ":" + roundedMinutes;
+    const currentTime = dayjs().format('HH:mm');
     hashRateConfig.data.labels.push(currentTime);
     sharesPerMinConfig.data.labels.push(currentTime);
     powerPerMinConfig.data.labels.push(currentTime);
-    if (hashRateConfig.data.labels.length > 144) {
+
+    if (hashRateConfig.data.labels.length > 144 ) { //(maxMinutesToChart / refreshRateMinutes) ) {
         hashRateConfig.data.labels.shift()
         sharesPerMinConfig.data.labels.shift()
         powerPerMinConfig.data.labels.shift()
@@ -362,7 +282,6 @@ function getNewTime() {
     powerPerMinChart.update();
 
 };
-
 function updateHashRate(data, device, dataset, sumDeviceHashRate) {
     var hashRate = 0;
     if( dataset.label !== 'PoolHash' ){
