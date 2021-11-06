@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         checkMiningStats
 // @namespace    http://tampermonkey.net/
-// @version      1.3
-// @description  Add a chart to your GMiner API
+// @version      1.4
+// @description  Add a chart to your cryptominer charts
 // @author       midnitecoder
 // @match        http://midniteminer:22333/
 // @match        http://midniteminer:42010/
@@ -49,8 +49,8 @@
 
 var hashRateChart = null;
 var sharesPerMinChart = null;
-var powerPerMinChart = null;
-var urlToLoad = 'goFish';
+var devicePowerChart = null;
+var urlToLoad = 'notFound';
 var currentMiner = null;
 var refreshRateMinutes = 0.5;
 var maxMinutesToChart = 120;
@@ -59,24 +59,24 @@ window.onload = async function() {
     await setUrlToLoad();
     logToConsole('onload', 'urlToLoad=' + urlToLoad + ' currentMiner=' + currentMiner);
     $('body').prepend('<div style = "text-align:center;"><canvas id="sharesPerMinChart" width="1000" height="250"></canvas></div>');
-    $('body').prepend('<div style = "text-align:center;"><canvas id="powerPerMinChart" width="1000" height="250"></canvas></div>');
+    $('body').prepend('<div style = "text-align:center;"><canvas id="devicePowerChart" width="1000" height="250"></canvas></div>');
     $('body').prepend('<div style = "text-align:center;"><canvas id="hashRateChart" width="1000" height="250"></canvas></div>');
 
     var ctx = document.getElementById('hashRateChart').getContext('2d');
     var ctxShares = document.getElementById('sharesPerMinChart').getContext('2d');
-    var power = document.getElementById('powerPerMinChart').getContext('2d');
+    var power = document.getElementById('devicePowerChart').getContext('2d');
     ctx.canvas.width = window.innerWidth;
     ctxShares.canvas.width = window.innerWidth;
     power.canvas.width = window.innerWidth;
 
     hashRateChart = new Chart(ctx, hashRateConfig);
     sharesPerMinChart = new Chart(ctxShares, sharesPerMinConfig);
-    powerPerMinChart = new Chart(power, powerPerMinConfig);
+    devicePowerChart = new Chart(power, powerPerMinConfig);
 
-    makeHashrateDatasets();
+    makeAllDeviceDatasets();
     updateData();
-    updateData();
-    setInterval(updateData, 30000); // Update every N Minutes * 60 * 1000
+//    updateData(); // If you want to see a full line immediately on startup uncomment
+    setInterval(updateData, refreshRateMinutes * 60 * 1000); // Update every N Minutes * 60 * 1000
 };
 
 function logToConsole(functionName, textToWrite) {
@@ -87,10 +87,10 @@ function logToConsole(functionName, textToWrite) {
 async function setUrlToLoad() {
 //  I'm sure there is a better way, but stopped trying to focus on life.
     await checkForMiner('stat');
-    if( urlToLoad === 'goFish' ) {
+    if( urlToLoad === 'notFound' ) {
         await checkForMiner('api/v1/status');
-        if( urlToLoad === 'goFish'){
-            await checkForMiner('summary')
+        if( urlToLoad === 'notFound'){
+            await checkForMiner('summary');
         }
     }
 }
@@ -98,7 +98,7 @@ async function setUrlToLoad() {
 
 async function checkForMiner(urlToCheck) {
     logToConsole('checkForMiner', 'urlToCheck='+urlToCheck);
-    if( urlToLoad !== 'goFish' ){
+    if( urlToLoad !== 'notFound' ){
         return;
     } else {
         var fullUrl = window.location + urlToCheck;
@@ -111,30 +111,32 @@ async function checkForMiner(urlToCheck) {
                 try{
                     data = window.JSON.parse(response.responseText);
                 } catch(err){
-                    urlToLoad = 'goFish';
+                    urlToLoad = 'notFound';
                     return;
                 }
                 if( data.hasOwnProperty('reboot_times') ){
-                    urlToLoad = 'api/v1/status';
+                    urlToLoad = fullUrl;
                     currentMiner = 'nbminer';
                     return;
                 }
                 if( data.hasOwnProperty('devices') ){
-                    urlToLoad = 'stat'
+                    urlToLoad = fullUrl;
                     currentMiner = 'gminer';
                     return;
                 }
                 if( data.hasOwnProperty('Session') ){
-                    urlToLoad = 'summary';
+                    urlToLoad = fullUrl;
                     currentMiner = 'lolMiner';
                     return;
                 } else {
-                    urlToLoad = 'goFish';
+                    urlToLoad = 'notFound';
+                    logToConsole('checkForMiner', 'Miner not presently identified/implemented objectDetails next');
+                    logToConsole('checkForMiner', JSON.stringify(response));
                 }
             },
             onerror: function(response) {
-                urlToLoad = 'goFish';
-                logToConsole('checkForMiner', 'Something went wrong in the onError catch urlToCheck=' + urlToCheck + ' at ' + window.location)
+                urlToLoad = 'notFound';
+                logToConsole('checkForMiner', 'Something went wrong in the onError catch urlToCheck=' + urlToCheck + ' at ' + window.location);
             }
         });
     }
@@ -182,7 +184,6 @@ var hashRateConfig = {
     }
 };
 
-
 var sharesPerMinConfig  = JSON.parse(JSON.stringify(hashRateConfig));
 sharesPerMinConfig.options.title.text = 'Shares per Minute';
 sharesPerMinConfig.options.scales.yAxes[0].scaleLabel.labelString = 'Shares per Minute';
@@ -196,11 +197,10 @@ function roundUp(num, precision) {
     return Math.ceil(num * precision) / precision
 }
 
-function makeHashrateDatasets() {
-    var fullUrl = window.location + urlToLoad;
+function makeAllDeviceDatasets() {
     GM.xmlHttpRequest( {
         method: 'GET',
-        url: fullUrl,
+        url: urlToLoad,
         responseType: "json",
         onload: function(response) {
             var data = window.JSON.parse(response.responseText);
@@ -237,7 +237,7 @@ function makeHashrateDatasets() {
                 powerPerMinConfig.data.datasets.push(powerDataset);
                 hashRateChart.update();
                 sharesPerMinChart.update();
-                powerPerMinChart.update();
+                devicePowerChart.update();
             });
             var poolDataset = {
                 label: 'PoolHash',
@@ -253,35 +253,21 @@ function makeHashrateDatasets() {
 }
 
 function getNewTime() {
-//    var time = new Date();
-//    var hours = time.getHours();
-//    var minutes = time.getMinutes();
-//    var roundedHours = "";
-//    var roundedMinutes = "";
-//
-//    if (hours < 10) {
-//        roundedHours = "0" + hours;
-//    } else roundedHours = hours;
-//    if (minutes < 10) {
-//        roundedMinutes = "0" + minutes;
-//    } else roundedMinutes = minutes;
-//
-//    var currentTime = roundedHours + ":" + roundedMinutes;
     const currentTime = dayjs().format('HH:mm');
     hashRateConfig.data.labels.push(currentTime);
     sharesPerMinConfig.data.labels.push(currentTime);
     powerPerMinConfig.data.labels.push(currentTime);
 
-    if (hashRateConfig.data.labels.length > 144 ) { //(maxMinutesToChart / refreshRateMinutes) ) {
+    if (hashRateConfig.data.labels.length > (maxMinutesToChart / refreshRateMinutes) ){
         hashRateConfig.data.labels.shift()
         sharesPerMinConfig.data.labels.shift()
         powerPerMinConfig.data.labels.shift()
     }
     hashRateChart.update();
     sharesPerMinChart.update();
-    powerPerMinChart.update();
+    devicePowerChart.update();
+}
 
-};
 function updateHashRate(data, device, dataset, sumDeviceHashRate) {
     var hashRate = 0;
     if( dataset.label !== 'PoolHash' ){
@@ -296,7 +282,6 @@ function updateHashRate(data, device, dataset, sumDeviceHashRate) {
             dataset.borderColor = 'rgb(0, 51, 0)';
         }
     }
-
     dataset.data.push(roundUp(hashRate, 2));
     hashRateChart.update();
 }
@@ -307,12 +292,11 @@ function updateShares(data, device, dataset) {
 }
 
 function updatePower(data, device, dataset){
-   dataset.data.push( device.devicePower / device.deviceHashShareDivisor ).toPrecision(2);
-   powerPerMinChart.update();
+   dataset.data.push( Math.round(device.devicePower / device.deviceHashShareDivisor ));
+   devicePowerChart.update();
 }
 
-function getHashShareDivisor(rigDeviceName) {
-    logToConsole('getHash', 'rigDeviceName='+rigDeviceName);
+function getDeviceDivisor(rigDeviceName) {
     if( rigDeviceName.includes('3090') ){
         return 3.0;
     } else if( rigDeviceName.includes('6800') ){
@@ -342,7 +326,7 @@ function mapMinerData(minerData) {
         translatedMinerData.totalStaleShares   = minerData.total_stale_shares;
         translatedMinerData.totalInvalidShares = minerData.total_invalid_shares;
         minerData.devices.forEach(function(device) {
-            const currDivisor = getHashShareDivisor(device.name);
+            const currDivisor = getDeviceDivisor(device.name);
             var rigDeviceData = {
                 deviceID:               device.gpu_id,
                 deviceHashShareDivisor: currDivisor,
@@ -365,7 +349,7 @@ function mapMinerData(minerData) {
         translatedMinerData.totalStaleShares    = minerData.Session.Stale;
         translatedMinerData.totalInvalidShares  = 0;
         minerData.GPUs.forEach(function(device) {
-            const currDivisor = getHashShareDivisor(device.name);
+            const currDivisor = getDeviceDivisor(device.name);
             var rigDeviceData = {
                 deviceID:               device.Index,
                 deviceHashShareDivisor: currDivisor,
@@ -389,7 +373,7 @@ function mapMinerData(minerData) {
         translatedMinerData.totalStaleShares    = 0;
         translatedMinerData.totalInvalidShares  = minerData.stratum.invlaid_shares;
         minerData.miner.devices.forEach(function(device) {
-            const currDivisor = getHashShareDivisor(device.info);
+            const currDivisor = getDeviceDivisor(device.info);
             var rigDeviceData = {
                 deviceID:               device.id,
                 deviceHashShareDivisor: currDivisor,
@@ -409,40 +393,28 @@ function mapMinerData(minerData) {
 
 function updateData() {
     getNewTime();
-    var data = null
+    var data = null;
     var devices = new Array();
-    var fullUrl = window.location + urlToLoad;
     GM.xmlHttpRequest( {
         method: 'GET',
-        url: fullUrl,
+        url: urlToLoad,
         responseType: "json",
         onload: function(response) {
             data = window.JSON.parse(response.responseText);
             var translatedMinerData = mapMinerData(data);
             devices = translatedMinerData.rigDevices;
-            var datasets = hashRateConfig.data.datasets;
+            var hashrateDataset = hashRateConfig.data.datasets;
             var sharesDataset = sharesPerMinConfig.data.datasets;
             var powerDataset = powerPerMinConfig.data.datasets;
-            var index = 0
+            var currDeviceIndex = 0;
             var sumDeviceHashRate = 0;
-            datasets.forEach(function(dataset) {
-                if( dataset.label !== 'PoolHash' ){
-                    var deviceHashRate = parseInt(devices[index].hashRate);
-                    sumDeviceHashRate += deviceHashRate;
-               }
-                updateHashRate(translatedMinerData, devices[index], dataset, sumDeviceHashRate);
-                index += 1;
-            });
-            index = 0;
-            sharesDataset.forEach(function(dataset) {
-                updateShares(translatedMinerData, devices[index], dataset);
-                index += 1;
-            });
-            index = 0;
-            powerDataset.forEach(function(dataset) {
-                updatePower(translatedMinerData, devices[index], dataset);
-                index += 1;
-            });
-        }
+            for( currDeviceIndex = 0; currDeviceIndex < devices.length; currDeviceIndex++){
+                sumDeviceHashRate += parseInt(devices[currDeviceIndex].hashRate);
+                updateHashRate(translatedMinerData, devices[currDeviceIndex], hashrateDataset[currDeviceIndex], sumDeviceHashRate);
+                updateShares(translatedMinerData, devices[currDeviceIndex], sharesDataset[currDeviceIndex]);
+                updatePower(translatedMinerData, devices[currDeviceIndex], powerDataset[currDeviceIndex]);
+            }
+            updateHashRate(translatedMinerData, devices[currDeviceIndex], hashrateDataset[currDeviceIndex], sumDeviceHashRate); // Last one ... update PoolShares
+       }
     });
 };
