@@ -1,4 +1,4 @@
-# minerDisplay
+# minerMetricsChart
 Browser userscript to display Proof-of-Work mining hashrates, power consumption and shares per minute.
 
 In order to use this script you need to install TaperMonkey (https://www.tampermonkey.net/) so that you an run userscript. I would guess you could find/run other userscripts, but I've only used TaperMonkey thus far.
