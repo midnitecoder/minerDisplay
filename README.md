@@ -1,6 +1,8 @@
 # minerMetricsChart
 Browser userscript to display Proof-of-Work mining hashrates, power consumption and shares per minute.
 
+Yes, I'm aware HiveOS tracks these metrics too in a display, though it's not updated as frequently and is difficult when tuning to see the values.
+
 In order to use this script you need to install TaperMonkey (https://www.tampermonkey.net/) so that you an run userscript. I would guess you could find/run other userscripts, but I've only used TaperMonkey thus far.
 
 Presently supported miners - only tested on ETH so far:
