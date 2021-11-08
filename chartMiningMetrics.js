@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         checkMiningStats
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.5
 // @description  Add a chart to your cryptominer charts
 // @author       midnitecoder
 // @match        http://midniteminer:22333/
@@ -52,16 +52,22 @@ var sharesPerMinChart = null;
 var devicePowerChart = null;
 var urlToLoad = 'notFound';
 var currentMiner = null;
-var refreshRateMinutes = 0.5;
-var maxMinutesToChart = 120;
+var refreshRateMinutes = 0.25;
+var maxMinutesToChart = 30;
+var displayPoolHash = false;
 
 window.onload = async function() {
     await setUrlToLoad();
     logToConsole('onload', 'urlToLoad=' + urlToLoad + ' currentMiner=' + currentMiner);
-    $('body').prepend('<div style = "text-align:center;"><canvas id="sharesPerMinChart" width="1000" height="250"></canvas></div>');
-    $('body').prepend('<div style = "text-align:center;"><canvas id="devicePowerChart" width="1000" height="250"></canvas></div>');
-    $('body').prepend('<div style = "text-align:center;"><canvas id="hashRateChart" width="1000" height="250"></canvas></div>');
-
+    if( currentMiner !== 'trex' ){ // trex overwrites the entire portion of the top screen...metrics it presents are fairly good, but still going to support.
+        $('body').prepend('<div style = "text-align:center;"><canvas id="sharesPerMinChart" width="1000" height="250"></canvas></div>');
+        $('body').prepend('<div style = "text-align:center;"><canvas id="devicePowerChart" width="1000" height="400"></canvas></div>');
+        $('body').prepend('<div style = "text-align:center;"><canvas id="hashRateChart" width="1000" height="400"></canvas></div>');
+    } else {
+        $('body').append('<div style = "text-align:center;"><canvas id="sharesPerMinChart" width="1000" height="250"></canvas></div>');
+        $('body').append('<div style = "text-align:center;"><canvas id="devicePowerChart" width="1000" height="400"></canvas></div>');
+        $('body').append('<div style = "text-align:center;"><canvas id="hashRateChart" width="1000" height="400"></canvas></div>');
+    }
     var ctx = document.getElementById('hashRateChart').getContext('2d');
     var ctxShares = document.getElementById('sharesPerMinChart').getContext('2d');
     var power = document.getElementById('devicePowerChart').getContext('2d');
@@ -75,7 +81,7 @@ window.onload = async function() {
 
     makeAllDeviceDatasets();
     updateData();
-//    updateData(); // If you want to see a full line immediately on startup uncomment
+    updateData(); // If you want to see a full line immediately on startup uncomment
     setInterval(updateData, refreshRateMinutes * 60 * 1000); // Update every N Minutes * 60 * 1000
 };
 
@@ -90,7 +96,7 @@ async function setUrlToLoad() {
     if( urlToLoad === 'notFound' ) {
         await checkForMiner('api/v1/status');
         if( urlToLoad === 'notFound'){
-            await checkForMiner('summary');
+            await checkForMiner('summary'); // This can be multiple miners
         }
     }
 }
@@ -128,6 +134,10 @@ async function checkForMiner(urlToCheck) {
                     urlToLoad = fullUrl;
                     currentMiner = 'lolMiner';
                     return;
+                } 
+                if( data.hasOwnProperty('description') ){
+                        urlToLoad = fullUrl;
+                        currentMiner = 'trex';
                 } else {
                     urlToLoad = 'notFound';
                     logToConsole('checkForMiner', 'Miner not presently identified/implemented objectDetails next');
@@ -211,43 +221,34 @@ function makeAllDeviceDatasets() {
                 var colorNames = Object.keys(window.chartColors);
                 var colorName = colorNames[hashRateConfig.data.datasets.length % colorNames.length];
                 var newColor = window.chartColors[colorName];
-                var newDataset = {
-                    label: device.name,
+                var hashrateDataset = {
+                    label: device.deviceID + '-' + device.name,
                     backgroundColor: newColor,
                     borderColor: newColor,
                     data: [],
                     fill: false
                 };
-                var sharesDataset = {
-                    label: device.name,
-                    backgroundColor: newColor,
-                    borderColor: newColor,
-                    data: [],
-                    fill: false
-                }
-                var powerDataset = {
-                    label: device.name,
-                    backgroundColor: newColor,
-                    borderColor: newColor,
-                    data: [],
-                    fill: false
-                }
-                hashRateConfig.data.datasets.push(newDataset);
+                var sharesDataset  = JSON.parse(JSON.stringify(hashrateDataset));
+                var powerDataset  = JSON.parse(JSON.stringify(hashrateDataset));
+                // update it all
+                hashRateConfig.data.datasets.push(hashrateDataset);
                 sharesPerMinConfig.data.datasets.push(sharesDataset);
                 powerPerMinConfig.data.datasets.push(powerDataset);
                 hashRateChart.update();
                 sharesPerMinChart.update();
                 devicePowerChart.update();
             });
-            var poolDataset = {
-                label: 'PoolHash',
-                backgroundColor: 'rgb(75, 192, 192)',
-                borderColor: 'rgb(75, 192, 192)',
-                data: [],
-                fill: false
-            };
-            hashRateConfig.data.datasets.push(poolDataset);
-            hashRateChart.update();
+            if ( displayPoolHash ){
+                var poolDataset = {
+                    label: 'PoolHash',
+                    backgroundColor: 'rgb(75, 192, 192)',
+                    borderColor: 'rgb(75, 192, 192)',
+                    data: [],
+                    fill: false
+               }
+                hashRateConfig.data.datasets.push(poolDataset);
+                hashRateChart.update();
+            }
         }
     });
 }
@@ -259,9 +260,9 @@ function getNewTime() {
     powerPerMinConfig.data.labels.push(currentTime);
 
     if (hashRateConfig.data.labels.length > (maxMinutesToChart / refreshRateMinutes) ){
-        hashRateConfig.data.labels.shift()
-        sharesPerMinConfig.data.labels.shift()
-        powerPerMinConfig.data.labels.shift()
+        hashRateConfig.data.labels.shift();
+        sharesPerMinConfig.data.labels.shift();
+        powerPerMinConfig.data.labels.shift();
     }
     hashRateChart.update();
     sharesPerMinChart.update();
@@ -297,11 +298,16 @@ function updatePower(data, device, dataset){
 }
 
 function getDeviceDivisor(rigDeviceName) {
-    if( rigDeviceName.includes('3090') ){
-        return 3.0;
-    } else if( rigDeviceName.includes('6800') ){
-        return 2.0;
-    } else {
+    try{ // need to dig into, but lolMiner seemed to throw a fit on this .includes.
+        if( rigDeviceName.includes('3090') ){
+            return 3.0;
+        } else if( rigDeviceName.includes('6800') ){
+            return 2.0;
+        } else {
+            return 1.0;
+        }
+    } catch(err) {
+        logToConsole('getDeviceDivisor',' Caught some error...strange err=' + err);
         return 1.0;
     }
 }
@@ -359,7 +365,7 @@ function mapMinerData(minerData) {
                 deviceRejectShares:     device.Submitted - device.Accepted,
                 deviceStaleShares:      device.Stale,
                 deviceInvalidShares:    0,
-                devicePower:            device.power
+                devicePower:            0
             }
             translatedMinerData.rigDevices.push(rigDeviceData);
         });
@@ -371,7 +377,7 @@ function mapMinerData(minerData) {
         translatedMinerData.totalValidShares    = minerData.stratum.accepted_shares;
         translatedMinerData.totalRejectShares   = minerData.stratum.rejected_shares;
         translatedMinerData.totalStaleShares    = 0;
-        translatedMinerData.totalInvalidShares  = minerData.stratum.invlaid_shares;
+        translatedMinerData.totalInvalidShares  = minerData.stratum.invalid_shares;
         minerData.miner.devices.forEach(function(device) {
             const currDivisor = getDeviceDivisor(device.info);
             var rigDeviceData = {
@@ -382,12 +388,36 @@ function mapMinerData(minerData) {
                 deviceValidShares:      device.accepted_shares,
                 deviceRejectShares:     device.rejected_shares,
                 deviceStaleShares:      0,
-                deviceInvalidShares:    device.invlaid_shares,
+                deviceInvalidShares:    device.invalid_shares,
+                devicePower:            device.power
+            }
+            translatedMinerData.rigDevices.push(rigDeviceData);
+        });
+    } else if ( currentMiner === 'trex' ) {
+        translatedMinerData.miner               = 'trex';
+        translatedMinerData.uptimeMinutes       = minerData.uptime / 60.0;
+        translatedMinerData.poolSpeed           = (minerData.accepted_count * 4000.48) / minerData.uptime;
+        translatedMinerData.totalValidShares    = minerData.accepted_count;
+        translatedMinerData.totalRejectShares   = minerData.rejected_count;
+        translatedMinerData.totalStaleShares    = 0;
+        translatedMinerData.totalInvalidShares  = minerData.invalid_count;
+        minerData.miner.gpus.forEach(function(device) {
+            const currDivisor = getDeviceDivisor(device.name);
+            var rigDeviceData = {
+                deviceID:               device.id,
+                deviceHashShareDivisor: currDivisor,
+                name:                   device.name,
+                hashRate:               device.hashrate.toFixed(0) / 1000000.0,
+                deviceValidShares:      device.shares.accepted_count,
+                deviceRejectShares:     device.shares.rejected_count,
+                deviceStaleShares:      0,
+                deviceInvalidShares:    device.shares.invalid_count,
                 devicePower:            device.power
             }
             translatedMinerData.rigDevices.push(rigDeviceData);
         });
     }
+
     return translatedMinerData;
 }
 
@@ -414,7 +444,9 @@ function updateData() {
                 updateShares(translatedMinerData, devices[currDeviceIndex], sharesDataset[currDeviceIndex]);
                 updatePower(translatedMinerData, devices[currDeviceIndex], powerDataset[currDeviceIndex]);
             }
-            updateHashRate(translatedMinerData, devices[currDeviceIndex], hashrateDataset[currDeviceIndex], sumDeviceHashRate); // Last one ... update PoolShares
+            if( displayPoolHash ){
+                updateHashRate(translatedMinerData, devices[currDeviceIndex], hashrateDataset[currDeviceIndex], sumDeviceHashRate); // Last one ... update PoolShares\
+            }
        }
     });
 };

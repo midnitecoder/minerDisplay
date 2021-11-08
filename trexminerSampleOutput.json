@@ -1,0 +1,90 @@
+{
+    "accepted_count": 2,
+    "active_pool":
+    {
+        "difficulty": "4.00 G",
+        "last_submit_ts": 1636310370,
+        "ping": 59,
+        "retries": 0,
+        "url": "stratum+ssl://eth-us-east.flexpool.io:5555",
+        "user": "walletAddress",
+        "worker": "MIDNITECODER.trex"
+    },
+    "algorithm": "ethash",
+    "api": "4.1",
+    "build_date": "Oct 24 2021 23:49:18",
+    "coin": "",
+    "description": "T-Rex NVIDIA GPU miner",
+    "driver": "472.12",
+    "gpu_total": 1,
+    "gpus":
+    [
+        {
+            "cclock": 1085,
+            "dag_build_mode": 0,
+            "device_id": 0,
+            "efficiency": "335kH/W",
+            "fan_speed": 80,
+            "gpu_id": 0,
+            "gpu_user_id": 0,
+            "hashrate": 33167695,
+            "hashrate_day": 0,
+            "hashrate_hour": 32184259,
+            "hashrate_instant": 33140557,
+            "hashrate_minute": 33169459,
+            "intensity": 22.0,
+            "lhr_tune": 0.0,
+            "low_load": false,
+            "mclock": 7493,
+            "mtweak": 0,
+            "name": "GTX 1660 SUPER",
+            "paused": false,
+            "pci_bus": 1,
+            "pci_domain": 0,
+            "pci_id": 0,
+            "potentially_unstable": false,
+            "power": 99,
+            "power_avr": 99,
+            "shares":
+            {
+                "accepted_count": 2,
+                "invalid_count": 0,
+                "last_share_diff": 0.0,
+                "last_share_submit_ts": 0,
+                "max_share_diff": 0.0,
+                "max_share_submit_ts": 0,
+                "rejected_count": 0,
+                "solved_count": 0
+            },
+            "temperature": 57,
+            "uuid": "eb5782cdcd92946118234d9fcbb8710a",
+            "vendor": "NVIDIA"
+        }
+    ],
+    "hashrate": 33167695,
+    "hashrate_day": 0,
+    "hashrate_hour": 32184259,
+    "hashrate_minute": 33169459,
+    "invalid_count": 0,
+    "name": "t-rex",
+    "os": "win",
+    "paused": false,
+    "rejected_count": 0,
+    "revision": "3ed63f02e8cb",
+    "sharerate": 2.0,
+    "sharerate_average": 1.3480000000000001,
+    "solved_count": 0,
+    "success": 1,
+    "time": 1636310565,
+    "uptime": 283,
+    "validate_shares": false,
+    "version": "0.24.5",
+    "watchdog_stat":
+    {
+        "built_in": true,
+        "startup_ts": 213,
+        "total_restarts": 0,
+        "uptime": 288,
+        "wd_version": "0.24.5"
+    }
+}

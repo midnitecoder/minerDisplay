@@ -1,0 +1,92 @@
+{
+    "miner":
+    {
+        "devices":
+        [
+            {
+                "accepted_shares": 692,
+                "core_clock": 1492,
+                "core_utilization": 99,
+                "fan": 75,
+                "hashrate": "36.50 M",
+                "hashrate2": "0.000 ",
+                "hashrate2_raw": 0,
+                "hashrate_raw": 36498463.11400635,
+                "id": 0,
+                "info": "NVIDIA GeForce RTX 3060",
+                "invalid_shares": 0,
+                "memTemperature": 0,
+                "mem_clock": 8676,
+                "mem_utilization": 100,
+                "pci_bus_id": 1,
+                "power": 109,
+                "rejected_shares": 0,
+                "temperature": 63
+            },
+            {
+                "accepted_shares": 682,
+                "core_clock": 1575,
+                "core_utilization": 99,
+                "fan": 70,
+                "hashrate": "36.25 M",
+                "hashrate2": "0.000 ",
+                "hashrate2_raw": 0,
+                "hashrate_raw": 36245373.960746236,
+                "id": 6,
+                "info": "NVIDIA GeForce RTX 3060",
+                "invalid_shares": 0,
+                "memTemperature": 0,
+                "mem_clock": 8662,
+                "mem_utilization": 100,
+                "pci_bus_id": 18,
+                "power": 109,
+                "rejected_shares": 0,
+                "temperature": 53
+            },
+            {
+                "accepted_shares": 622,
+                "core_clock": 337,
+                "core_utilization": 100,
+                "fan": 70,
+                "hashrate": "6.088 M",
+                "hashrate2": "0.000 ",
+                "hashrate2_raw": 0,
+                "hashrate_raw": 6088460.828163326,
+                "id": 7,
+                "info": "NVIDIA GeForce RTX 3060",
+                "invalid_shares": 0,
+                "memTemperature": 0,
+                "mem_clock": 8676,
+                "mem_utilization": 42,
+                "pci_bus_id": 19,
+                "power": 2240,
+                "rejected_shares": 0,
+                "temperature": 45
+            }
+        ],
+        "total_hashrate": "78.83 M",
+        "total_hashrate2": "0.000 ",
+        "total_hashrate2_raw": 0,
+        "total_hashrate_raw": 78832297.90291591,
+        "total_power_consume": 2458
+    },
+    "reboot_times": 0,
+    "start_time": 1636165556,
+    "stratum":
+    {
+        "accepted_shares": 1996,
+        "algorithm": "ethash",
+        "difficulty": "4.000 G",
+        "dual_mine": false,
+        "invalid_shares": 0,
+        "latency": 55,
+        "pool_hashrate_10m": "98.52 M",
+        "pool_hashrate_24h": "105.7 M",
+        "pool_hashrate_4h": "85.87 M",
+        "rejected_shares": 0,
+        "url": "eth-us-east.flexpool.io:5555",
+        "use_ssl": true,
+        "user": "WalletAddress.worker"
+    },
+    "version": "39.7"
+}
